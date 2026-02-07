@@ -1,0 +1,1446 @@
+<!--
+===============================================================================
+ OITA SKY RESILI-VIEW（大分スカイ・レジリビュー）
+ 「絶景で癒やし、空の目で命を守る。」
+===============================================================================
+
+【本番環境推奨フォルダ構成】
+oita-sky-resiliview/
+├── index.html                  # メインHTMLファイル（本ファイル）
+├── assets/
+│   ├── img/
+│   │   ├── 360_view.jpg        # 観光モード用360度画像（別府湾・湯布院空撮）
+│   │   └── 360_hazard.jpg      # 防災モード用360度画像（ハザードマップ加工済み）
+│   ├── audio/
+│   │   ├── nature_ambience.mp3 # 観光モードBGM（鳥のさえずり等）
+│   │   └── alert_tone.mp3      # 防災モード警告音
+│   └── icons/
+│       ├── shelter.png         # 避難所アイコン
+│       └── warning.png         # 警告アイコン
+├── css/
+│   └── style.css               # 外部CSS（本番時分離推奨）
+├── js/
+│   └── app.js                  # 外部JavaScript（本番時分離推奨）
+└── README.md                   # プロジェクト説明
+
+===============================================================================
+-->
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="大分の絶景を360度VRで体験。観光と防災を融合したフェーズフリーWebアプリ。">
+  <title>OITA SKY RESILI-VIEW | 大分スカイ・レジリビュー</title>
+
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <!-- A-Frame Event Set Component (for hover effects) -->
+  <script src="https://unpkg.com/aframe-event-set-component@5/dist/aframe-event-set-component.min.js"></script>
+
+  <style>
+    /* ========================================
+       Base Styles
+    ======================================== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+      overflow: hidden;
+      background: #000;
+    }
+
+    /* ========================================
+       Header Logo Area
+    ======================================== */
+    .header-logo {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 1000;
+      color: #fff;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+    }
+
+    .header-logo h1 {
+      font-size: 1.8rem;
+      margin: 0;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+      /* 文字を見やすく */
+    }
+
+    .header-logo p {
+      margin: 5px 0 0;
+      font-size: 0.9rem;
+      opacity: 0.9;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    }
+
+    /* ========================================
+       CTA Button (Conversion Area) - Top Right
+    ======================================== */
+    .cta-container {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 1000;
+      text-align: right;
+    }
+
+    .cta-subtext {
+      color: #fff;
+      font-size: 0.75rem;
+      margin-bottom: 6px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-glow {
+
+      0%,
+      100% {
+        opacity: 0.9;
+      }
+
+      50% {
+        opacity: 1;
+        text-shadow: 0 0 12px rgba(255, 200, 100, 0.8);
+      }
+    }
+
+    .cta-button {
+      display: inline-block;
+      padding: 14px 22px;
+      background: linear-gradient(135deg, #FFD700 0%, #FF8C00 50%, #FF6B00 100%);
+      color: #1a1a1a;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border-radius: 50px;
+      box-shadow:
+        0 4px 15px rgba(255, 140, 0, 0.5),
+        0 8px 30px rgba(0, 0, 0, 0.3),
+        inset 0 2px 0 rgba(255, 255, 255, 0.4),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .cta-button:hover {
+      transform: translateY(-3px) scale(1.03);
+      box-shadow:
+        0 6px 25px rgba(255, 140, 0, 0.7),
+        0 12px 40px rgba(0, 0, 0, 0.4),
+        inset 0 2px 0 rgba(255, 255, 255, 0.5);
+    }
+
+    .cta-button:hover::before {
+      left: 100%;
+    }
+
+    .cta-button:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    /* ========================================
+       Mode Switch Area - Bottom
+    ======================================== */
+    .mode-switch-container {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      display: flex;
+      gap: 12px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 60px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .mode-btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 50px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mode-btn-tourism {
+      background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+    }
+
+    .mode-btn-tourism:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
+    }
+
+    .mode-btn-tourism.active {
+      box-shadow:
+        0 0 0 3px rgba(76, 175, 80, 0.5),
+        0 4px 15px rgba(76, 175, 80, 0.4);
+    }
+
+    .mode-btn-disaster {
+      background: linear-gradient(135deg, #f44336 0%, #c62828 100%);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(244, 67, 54, 0.4);
+    }
+
+    .mode-btn-disaster:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(244, 67, 54, 0.6);
+    }
+
+    .mode-btn-disaster.active {
+      box-shadow:
+        0 0 0 3px rgba(244, 67, 54, 0.5),
+        0 4px 15px rgba(244, 67, 54, 0.4);
+      animation: pulse-danger 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse-danger {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.5), 0 4px 15px rgba(244, 67, 54, 0.4);
+      }
+
+      50% {
+        box-shadow: 0 0 0 6px rgba(244, 67, 54, 0.3), 0 4px 25px rgba(244, 67, 54, 0.6);
+      }
+    }
+
+    /* ========================================
+       Disaster Overlay
+    ======================================== */
+    .disaster-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(180, 0, 0, 0.25);
+      pointer-events: none;
+      z-index: 500;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .disaster-overlay.active {
+      opacity: 1;
+    }
+
+    /* ========================================
+       Warning Banner (Disaster Mode)
+    ======================================== */
+    .warning-banner {
+      position: fixed;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1001;
+      background: linear-gradient(90deg, #ff0000, #cc0000);
+      color: #fff;
+      padding: 10px 30px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      box-shadow: 0 4px 20px rgba(255, 0, 0, 0.5);
+      opacity: 0;
+      transform: translateX(-50%) translateY(-20px);
+      transition: all 0.4s ease;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .warning-banner.active {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .warning-banner::before {
+      content: '⚠️';
+      font-size: 1.2rem;
+    }
+
+    /* ========================================
+       A-Frame Scene Styles
+    ======================================== */
+    a-scene {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ========================================
+       Loading & Start Screen
+    ======================================== */
+    .loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+
+    .loading-screen.hide {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loading-content {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255, 200, 100, 0.2);
+      border-top-color: #FFD700;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .loading-text {
+      color: #fff;
+      font-size: 1rem;
+      opacity: 0.9;
+      letter-spacing: 0.05em;
+    }
+
+    .start-button {
+      display: none;
+      /* 初期状態は非表示 */
+      padding: 16px 40px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      background: linear-gradient(135deg, #FFD700 0%, #FF8C00 100%);
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(255, 140, 0, 0.6);
+      transition: all 0.3s ease;
+      animation: pulse-glow 2s infinite;
+    }
+
+    .start-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 30px rgba(255, 140, 0, 0.8);
+    }
+
+    .start-button.visible {
+      display: block;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ========================================
+       Info Tags (AR Labels in VR)
+    ======================================== */
+    .info-tag {
+      position: absolute;
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      pointer-events: none;
+      transition: all 0.3s ease;
+      /* Accessibility: Improve Contrast */
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .info-tag.tourism {
+      border-color: rgba(76, 175, 80, 0.8);
+      background: rgba(46, 125, 50, 0.9);
+    }
+
+    .info-tag.disaster {
+      border-color: rgba(244, 67, 54, 0.8);
+      background: rgba(198, 40, 40, 0.95);
+      animation: blink-tag 1s ease-in-out infinite;
+    }
+
+    @keyframes blink-tag {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.8;
+      }
+    }
+
+    /* ========================================
+       Responsive Adjustments
+    ======================================== */
+    @media (max-width: 600px) {
+      .cta-button {
+        padding: 12px 18px;
+        /* Larger touch target */
+        font-size: 0.8rem;
+        min-height: 44px;
+        /* Apple Human Interface Guidelines */
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .cta-subtext {
+        font-size: 0.7rem;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+        /* Better readability */
+      }
+
+      .mode-switch-container {
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px;
+        bottom: 20px;
+      }
+
+      .mode-btn {
+        padding: 14px 24px;
+        /* Larger touch target */
+        font-size: 0.9rem;
+        min-height: 44px;
+        /* A11y */
+      }
+
+      .header-logo h1 {
+        font-size: 1.1rem;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+      }
+
+      .warning-banner {
+        font-size: 0.85rem;
+        padding: 10px 24px;
+      }
+
+      .scene-thumb {
+        width: 60px;
+        height: 44px;
+        /* Larger touch target */
+      }
+    }
+
+    /* Landscape mode on mobile */
+    @media (max-width: 900px) and (orientation: landscape) {
+      .mode-switch-container {
+        flex-direction: row;
+        bottom: 10px;
+      }
+    }
+
+    /* ========================================
+       Scene Navigation
+    ======================================== */
+    .scene-nav-container {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      display: flex;
+      gap: 8px;
+      padding: 10px 16px;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .scene-thumb {
+      width: 60px;
+      height: 40px;
+      border-radius: 8px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      object-fit: cover;
+      opacity: 0.7;
+    }
+
+    .scene-thumb:hover {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+
+    .scene-thumb.active {
+      border-color: #FFD700;
+      opacity: 1;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    }
+
+    .current-scene-label {
+      position: fixed;
+      top: 70px;
+      left: 16px;
+      z-index: 1000;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(5px);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .current-scene-label span {
+      color: #FFD700;
+    }
+
+    /* Scene Transition Overlay */
+    .scene-transition-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      z-index: 9000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .scene-transition-overlay.active {
+      opacity: 1;
+    }
+
+    @media (max-width: 600px) {
+      .scene-nav-container {
+        bottom: 100px;
+        padding: 8px 12px;
+      }
+
+      .scene-thumb {
+        width: 50px;
+        height: 32px;
+      }
+
+      .current-scene-label {
+        top: auto;
+        bottom: 160px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.8rem;
+      }
+    }
+
+    /* ========================================
+       Auto-Rotation Toggle
+    ======================================== */
+    .auto-rotate-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      z-index: 1000;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(10px);
+      color: #FFD700;
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .auto-rotate-btn:hover {
+      background: rgba(255, 215, 0, 0.2);
+      transform: scale(1.1);
+    }
+
+    .auto-rotate-btn.paused {
+      color: #888;
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .auto-rotate-btn.paused:hover {
+      color: #FFD700;
+    }
+
+    @media (max-width: 600px) {
+      .auto-rotate-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 1.2rem;
+        bottom: 140px;
+        left: 12px;
+      }
+    }
+
+    /* ========================================
+       Audio Control
+    ======================================== */
+    .audio-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      /* CTAの横、あるいは重ならない位置 */
+      z-index: 1000;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      font-size: 1.2rem;
+      backdrop-filter: blur(5px);
+      transition: all 0.3s ease;
+    }
+
+    .audio-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: scale(1.1);
+    }
+
+    .audio-btn.muted {
+      color: #ff5252;
+      border-color: rgba(255, 82, 82, 0.5);
+    }
+
+    @media (max-width: 600px) {
+      .audio-btn {
+        top: 80px;
+        /* SPレイアウトでCTAの下に配置 */
+        right: 16px;
+      }
+    }
+
+    /* ========================================
+       Mini Map
+    ======================================== */
+    .mini-map-container {
+      position: fixed;
+      top: 140px;
+      /* CTAボタンとの重なりを防ぐため下に移動 */
+      right: 16px;
+      z-index: 1000;
+      width: 200px;
+      height: 150px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .mini-map-container iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    .mini-map-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 6px 10px;
+      background: rgba(0, 0, 0, 0.7);
+      color: #FFD700;
+      font-size: 0.7rem;
+      font-weight: 600;
+      z-index: 1;
+    }
+
+    .mini-map-toggle {
+      position: absolute;
+      top: 4px;
+      right: 6px;
+      background: none;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.8rem;
+      opacity: 0.7;
+      z-index: 2;
+    }
+
+    .mini-map-toggle:hover {
+      opacity: 1;
+    }
+
+    .mini-map-container.collapsed {
+      width: 120px;
+      height: 32px;
+    }
+
+    .mini-map-container.collapsed iframe {
+      display: none;
+    }
+
+    @media (max-width: 600px) {
+      .mini-map-container {
+        width: 150px;
+        height: 120px;
+        top: 140px;
+        /* モバイルでも重なり防止 */
+        right: 10px;
+      }
+
+      .mini-map-container.collapsed {
+        width: 100px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Loading & Start Screen -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="loading-content">
+      <div class="loading-spinner" id="loadingSpinner"></div>
+      <p class="loading-text" id="loadingText">🌄 絶景を準備中...</p>
+      <button class="start-button" id="startButton">VR体験を始める ▶</button>
+    </div>
+  </div>
+
+  <!-- Header Logo -->
+  <div class="header-logo">
+    <h1>OITA SKY RESILI-VIEW</h1>
+    <p>絶景で癒やし、空の目で命を守る。</p>
+  </div>
+
+  <!-- CTA Button - Conversion Area -->
+  <div class="cta-container">
+    <p class="cta-subtext">✨ 自分も空を飛びたい！</p>
+    <a href="https://skyfivedrone.com/" target="_blank" rel="noopener noreferrer" class="cta-button">
+      この映像を撮ったパイロットになるには？ ▶
+    </a>
+  </div>
+
+  <!-- Warning Banner (Disaster Mode) -->
+  <div class="warning-banner" id="warningBanner">
+    防災シミュレーションモード：津波・洪水ハザード表示中
+  </div>
+
+  <!-- Disaster Overlay -->
+  <div class="disaster-overlay" id="disasterOverlay"></div>
+
+  <!-- Mini Map with Google Maps Embed -->
+  <div class="mini-map-container" id="miniMap">
+    <div class="mini-map-header">📍 現在地</div>
+    <button class="mini-map-toggle" onclick="toggleMiniMap()" title="地図を開閉">−</button>
+    <!-- 上村の郷（33.42348, 131.44203） -->
+    <iframe
+      src="https://www.google.com/maps/embed?pb=!1m17!1m12!1m3!1d3000!2d131.44203!3d33.42348!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m2!1m1!2zMzPCsDI1JzI0LjUiTiAxMzHCsDI2JzMxLjMiRQ!5e1!3m2!1sja!2sjp!4v1707200000000"
+      loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+    </iframe>
+  </div>
+
+  <!-- A-Frame VR Scene -->
+  <a-scene embedded vr-mode-ui="enabled: true" loading-screen="enabled: false"
+    renderer="antialias: true; colorManagement: true" id="vrScene">
+
+    <!-- Asset Management -->
+    <a-assets timeout="30000">
+      <!-- 
+        本番環境では以下の画像パスを使用:
+        - 観光モード: ./assets/img/360_view.jpg
+        - 防災モード: ./assets/img/360_hazard.jpg
+        
+        プロトタイプではデモ用のサンプル画像を使用
+      -->
+      <img id="sky-tourism" src="./assets/img/360_view.jpg" alt="観光モード360度背景">
+      <img id="sky-disaster" src="https://images.unsplash.com/photo-1534088568595-a066f410bcda?w=4096&q=80"
+        crossorigin="anonymous" alt="防災モード360度背景">
+    </a-assets>
+
+    <!-- 360 Sky Background Logic
+         Wrapper: Handles Horizontal Auto-Rotation (Y-axis)
+         Inner: Handles Orientation Correction (Z-axis -90deg roll)
+    -->
+    <a-entity id="skybox-wrapper" rotation="0 0 0">
+      <a-sky id="skybox" src="#sky-tourism" rotation="0 -299 -90"></a-sky>
+    </a-entity>
+
+    <!-- Camera with Gaze Cursor -->
+    <a-camera look-controls="magicWindowTrackingEnabled: true; touchEnabled: true" wasd-controls="enabled: false"
+      position="0 1.6 0">
+      <!-- Gaze Cursor (視線カーソル) -->
+      <!-- Gaze Cursor (視線カーソル) - Hidden as requested -->
+      <a-entity cursor="fuse: true; fuseTimeout: 1500" position="0 0 -1" visible="false"
+        geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03" material="color: #FFD700; shader: flat"
+        raycaster="objects: .clickable">
+      </a-entity>
+      <!-- Center Reticle -->
+      <a-entity geometry="primitive: circle; radius: 0.003" material="color: white; shader: flat" position="0 0 -1">
+      </a-entity>
+    </a-camera>
+
+    <!-- VR UI Panel (VR空間内のUI) - Hidden for cleaner view - REMOVED to prevent accidental clicks -->
+    <!-- (Original code removed: ctaVRPanel was here) -->
+
+    <!-- Tourism Mode Labels (Hidden for now) -->
+    <!-- 
+    <a-entity id="tourismLabels" visible="false">
+      <a-entity position="-8 2 -10" look-at="[camera]"
+        text="value: 🏔️ 別府温泉（湯けむり）; color: #4CAF50; align: center; width: 6; font: mozillavr"
+        geometry="primitive: plane; width: 3.5; height: 0.6" material="color: #1a1a1a; opacity: 0.8">
+      </a-entity>
+
+      <a-entity position="10 3 -8" look-at="[camera]"
+        text="value: 🌿 湯布院・金鱗湖; color: #4CAF50; align: center; width: 6; font: mozillavr"
+        geometry="primitive: plane; width: 3; height: 0.6" material="color: #1a1a1a; opacity: 0.8">
+      </a-entity>
+
+      <a-entity position="0 4 -15" look-at="[camera]"
+        text="value: 🌊 別府湾パノラマ; color: #4CAF50; align: center; width: 6; font: mozillavr"
+        geometry="primitive: plane; width: 3; height: 0.6" material="color: #1a1a1a; opacity: 0.8">
+      </a-entity>
+    </a-entity>
+    -->
+
+    <!-- Disaster Mode Labels (Initially Hidden) -->
+    <!--
+    <a-entity id="disasterLabels" visible="false">
+      <a-entity position="-8 2 -10" look-at="[camera]"
+        text="value: ⛑️ 一時避難所（高台）; color: #ff5252; align: center; width: 6; font: mozillavr"
+        geometry="primitive: plane; width: 4; height: 0.6" material="color: #1a1a1a; opacity: 0.9">
+      </a-entity>
+
+      <a-entity position="10 1 -8" look-at="[camera]"
+        text="value: ⚠️ 津波到達ライン（ここまで来る）; color: #ff1744; align: center; width: 8; font: mozillavr"
+        geometry="primitive: plane; width: 5.5; height: 0.6" material="color: #b71c1c; opacity: 0.9">
+      </a-entity>
+
+      <a-entity position="0 2 -12" look-at="[camera]"
+        text="value: 🚨 浸水想定エリア; color: #ff5252; align: center; width: 6; font: mozillavr"
+        geometry="primitive: plane; width: 3.5; height: 0.6" material="color: #1a1a1a; opacity: 0.9">
+      </a-entity>
+
+      <a-entity position="5 3 -10" look-at="[camera]"
+        text="value: 📍 広域避難場所まで徒歩8分; color: #ffeb3b; align: center; width: 6; font: mozillavr"
+        geometry="primitive: plane; width: 4.5; height: 0.6" material="color: #1a1a1a; opacity: 0.9">
+      </a-entity>
+    </a-entity>
+    -->
+
+  </a-scene>
+
+  <!-- Scene Transition Overlay -->
+  <div class="scene-transition-overlay" id="sceneTransition"></div>
+
+  <!-- Current Scene Label - Hidden for single scene -->
+  <div class="current-scene-label" id="currentSceneLabel" style="display: none;">
+    📍 <span id="sceneNameDisplay">展望ポイント1</span>
+  </div>
+
+  <!-- Scene Navigation Thumbnails - Visible for navigation -->
+  <div class="scene-nav-container" id="sceneNavContainer" style="display: flex;">
+    <!-- Dynamically populated by JavaScript -->
+  </div>
+
+  <!-- Mode Switch Buttons -->
+  <div class="mode-switch-container">
+    <button class="mode-btn mode-btn-tourism active" id="btnTourism" onclick="switchMode('tourism')">
+      <span>🏞️</span> 癒やしの絶景を見る
+    </button>
+    <button class="mode-btn mode-btn-disaster" id="btnDisaster" onclick="switchMode('disaster')" style="display: none">
+      <span>⛑️</span> もしもの備え（生存ルート）
+    </button>
+  </div>
+
+  <!-- Audio Control -->
+  <button class="audio-btn" id="audioBtn" onclick="toggleMute()" title="ミュート切替">
+    🔊
+  </button>
+
+  <!-- Audio Assets (Hidden) -->
+  <!-- 
+    Note: Replace 'src' with actual file paths.
+    Tourism: Nature/Birds
+    Disaster: Alert/News noise
+    SE: Button Click
+  -->
+  <audio id="bgm-tourism" loop preload="auto">
+    <source src="./assets/audio/nature_ambience.mp3" type="audio/mpeg">
+    <!-- Fallback/Placeholder if local file missing -->
+    <source src="https://cdn.aframe.io/360-image-gallery-boilerplate/audio/city.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="bgm-disaster" loop preload="auto">
+    <source src="./assets/audio/alert_tone.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="se-click" preload="auto">
+    <source src="https://cdn.aframe.io/360-image-gallery-boilerplate/audio/click.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- Auto-Rotation Toggle Button -->
+  <button class="auto-rotate-btn paused" id="autoRotateBtn" onclick="toggleAutoRotate()" title="自動回転 OFF">
+    ⏸️
+  </button>
+
+  <script>
+    // ========================================
+    // OITA SKY RESILI-VIEW - Main Application
+    // Multi-Scene VR Tour System
+    // ========================================
+
+    // ========================================
+    // Scene Configuration
+    // ========================================
+    const scenes = [
+      {
+        id: 'scene1',
+        name: '展望ポイント1（ダム周辺）',
+        image: './assets/img/360_view.jpg',
+        rotation: '0 -139 0',
+        hotspots: [
+          { target: 'scene2', position: '5 1.2 -6', rotation: '0 -30 0', label: '次の地点へ →' },
+          { target: 'scene3', position: '-6 1.2 -5', rotation: '0 30 0', label: '山側へ →' }
+        ]
+      },
+      {
+        id: 'scene2',
+        name: '展望ポイント2（田園風景）',
+        image: './assets/img/360_view.jpg',
+        rotation: '0 -50 0',
+        hotspots: [
+          { target: 'scene1', position: '-5 1.2 -6', rotation: '0 30 0', label: '← 前の地点へ' },
+          { target: 'scene3', position: '4 1.2 -7', rotation: '0 -20 0', label: '山側へ →' }
+        ]
+      },
+      {
+        id: 'scene3',
+        name: '展望ポイント3（山間部）',
+        image: './assets/img/360_view.jpg',
+        rotation: '0 90 0',
+        hotspots: [
+          { target: 'scene1', position: '0 1.2 -8', rotation: '0 0 0', label: '← ダム周辺へ' },
+          { target: 'scene2', position: '-6 1.2 -4', rotation: '0 40 0', label: '← 田園へ' }
+        ]
+      }
+    ];
+
+    // Current state
+    let currentSceneId = 'scene1';
+    let currentMode = 'tourism';
+    let isAutoRotating = false;
+    let rotationAnimationId = null;
+    let isMuted = false; // Audio state
+
+    // DOM Elements - Audio
+    const bgmTourism = document.getElementById('bgm-tourism');
+    const bgmDisaster = document.getElementById('bgm-disaster');
+    const seClick = document.getElementById('se-click');
+    const audioBtn = document.getElementById('audioBtn');
+
+    // ... [Original Rotation Logic] ...
+
+    // ========================================
+    // Audio Management
+    // ========================================
+    function playBGM() {
+      if (isMuted) return;
+
+      // Stop all first
+      bgmTourism.pause();
+      bgmDisaster.pause();
+
+      // Play based on mode
+      const targetBGM = currentMode === 'tourism' ? bgmTourism : bgmDisaster;
+
+      // Reset volume (fade in could be added here)
+      targetBGM.currentTime = 0;
+      targetBGM.volume = 0.5;
+
+      const playPromise = targetBGM.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.log("Audio play prevented:", error);
+        });
+      }
+    }
+
+    function toggleMute() {
+      isMuted = !isMuted;
+
+      if (isMuted) {
+        bgmTourism.pause();
+        bgmDisaster.pause();
+        audioBtn.innerHTML = '🔇';
+        audioBtn.classList.add('muted');
+      } else {
+        playBGM();
+        audioBtn.innerHTML = '🔊';
+        audioBtn.classList.remove('muted');
+      }
+    }
+
+    function playSE(type) {
+      if (isMuted) return;
+      if (type === 'click') {
+        seClick.currentTime = 0;
+        seClick.play().catch(e => { }); // Ignore errors
+      }
+    }
+
+    // ========================================
+    // Cinematic Intro Animation
+    // ========================================
+    function playIntroAnimation() {
+      const camera = document.querySelector('[camera]');
+      if (!camera) return;
+
+      // 1. Set initial VOID state (Black out is handled by loading screen, but we zoom)
+      // Start with wide FOV (Zoomed out)
+      camera.setAttribute('camera', 'fov', 120);
+
+      // 2. Animate FOV to normal (80)
+      let fov = 120;
+      const targetFov = 80;
+      const duration = 2500; // ms
+      const startTime = performance.now();
+
+      function animate(time) {
+        const elapsed = time - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Ease out cubic
+        const ease = 1 - Math.pow(1 - progress, 3);
+
+        const currentFov = fov - (fov - targetFov) * ease;
+        camera.setAttribute('camera', 'fov', currentFov);
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    // ... [Modified switchMode to handle Audio] ...
+
+    /**
+     * Switch between Tourism and Disaster modes
+     */
+    function switchMode(mode) {
+      if (mode === currentMode) return;
+
+      currentMode = mode;
+
+      // Update Audio
+      playBGM();
+
+      if (mode === 'tourism') {
+        tourismLabels.setAttribute('visible', 'true');
+        disasterLabels.setAttribute('visible', 'false');
+        disasterOverlay.classList.remove('active');
+        warningBanner.classList.remove('active');
+        btnTourism.classList.add('active');
+        btnDisaster.classList.remove('active');
+      } else if (mode === 'disaster') {
+        tourismLabels.setAttribute('visible', 'false');
+        disasterLabels.setAttribute('visible', 'true');
+        disasterOverlay.classList.add('active');
+        warningBanner.classList.add('active');
+        btnTourism.classList.remove('active');
+        btnDisaster.classList.add('active');
+      }
+
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    }
+
+    // ... [Initialization] ...
+
+    // Start Button Click Handler (Updated with Audio/Intro)
+    startButton.addEventListener('click', () => {
+      // 1. Request iOS Gyro Permission
+      requestDeviceOrientation();
+
+      // 2. Play Intro Animation
+      playIntroAnimation();
+
+      // 3. Start Audio (User interaction allows this)
+      playBGM();
+
+      // 4. Hide Loading Screen
+      loadingScreen.classList.add('hide');
+      setTimeout(() => {
+        loadingScreen.style.display = 'none';
+      }, 500);
+
+      // 5. Initialize Scene Content
+      init();
+    });
+
+    // Update loadScene to play click sound
+    // (Existing loadScene function needs playSE('click') added)
+
+    // Start Y-axis only auto-rotation
+    function startAutoRotation() {
+      if (rotationAnimationId) return;
+
+      function rotate() {
+        if (!isAutoRotating) {
+          rotationAnimationId = null;
+          return;
+        }
+
+        // Three.jsのobject3Dを直接操作（ラジアン単位）
+        // skyboxWrapper (Y軸回転専用コンテナ) を動かす
+        skyboxWrapper.object3D.rotation.y += 0.0005;
+
+        rotationAnimationId = requestAnimationFrame(rotate);
+      }
+
+      rotationAnimationId = requestAnimationFrame(rotate);
+    }
+
+    // Stop auto-rotation
+    function stopAutoRotation() {
+      if (rotationAnimationId) {
+        cancelAnimationFrame(rotationAnimationId);
+        rotationAnimationId = null;
+      }
+    }
+
+    // DOM Elements
+    const skybox = document.getElementById('skybox');
+    const skyboxWrapper = document.getElementById('skybox-wrapper');
+    const tourismLabels = document.getElementById('tourismLabels');
+    const disasterLabels = document.getElementById('disasterLabels');
+    const disasterOverlay = document.getElementById('disasterOverlay');
+    const warningBanner = document.getElementById('warningBanner');
+    const btnTourism = document.getElementById('btnTourism');
+    const btnDisaster = document.getElementById('btnDisaster');
+    const loadingScreen = document.getElementById('loadingScreen');
+    const sceneTransition = document.getElementById('sceneTransition');
+    const sceneNameDisplay = document.getElementById('sceneNameDisplay');
+    const sceneNavContainer = document.getElementById('sceneNavContainer');
+    const hotspotsContainer = document.getElementById('hotspotsContainer');
+    const aScene = document.querySelector('a-scene');
+
+    // ========================================
+    // Scene Management
+    // ========================================
+
+    /**
+     * Initialize scene navigation thumbnails
+     */
+    function initSceneNav() {
+      sceneNavContainer.innerHTML = '';
+      scenes.forEach(scene => {
+        const thumb = document.createElement('img');
+        thumb.src = scene.image;
+        thumb.className = 'scene-thumb' + (scene.id === currentSceneId ? ' active' : '');
+        thumb.title = scene.name;
+        thumb.alt = scene.name;
+        thumb.onclick = () => loadScene(scene.id);
+        sceneNavContainer.appendChild(thumb);
+      });
+    }
+
+    /**
+     * Load a scene by ID
+     * @param {string} sceneId - The scene ID to load
+     */
+    function loadScene(sceneId) {
+      if (sceneId === currentSceneId) return;
+
+      playSE('click'); // Play Sound Effect
+
+      const scene = scenes.find(s => s.id === sceneId);
+      if (!scene) return;
+
+      // Transition animation
+      sceneTransition.classList.add('active');
+
+      setTimeout(() => {
+        currentSceneId = sceneId;
+
+        // Update skybox
+        skybox.setAttribute('src', scene.image);
+        // Rotation (yaw/panning) is applied to the wrapper
+        skyboxWrapper.setAttribute('rotation', scene.rotation);
+
+        // Update scene name
+        sceneNameDisplay.textContent = scene.name;
+
+        // Update navigation thumbnails
+        document.querySelectorAll('.scene-thumb').forEach((thumb, index) => {
+          thumb.classList.toggle('active', scenes[index].id === sceneId);
+        });
+
+        // Create hotspots for this scene
+        createHotspots(scene.hotspots);
+
+        // Haptic feedback
+        if (navigator.vibrate) {
+          navigator.vibrate(30);
+        }
+
+        // End transition
+        setTimeout(() => {
+          sceneTransition.classList.remove('active');
+        }, 300);
+      }, 300);
+    }
+
+    /**
+     * Create VR hotspots for scene navigation
+     * @param {Array} hotspots - Array of hotspot configurations
+     */
+    function createHotspots(hotspots) {
+      // Remove existing hotspots
+      const existingHotspots = document.querySelectorAll('.vr-hotspot');
+      existingHotspots.forEach(h => h.parentNode.removeChild(h));
+
+      // User requested to remove hotspots completely.
+      // Skipping creation of new hotspots and returning early.
+      return;
+    }
+
+    /**
+     * Toggle auto-rotation of the skybox
+     */
+    function toggleAutoRotate() {
+      const autoRotateBtn = document.getElementById('autoRotateBtn');
+      isAutoRotating = !isAutoRotating;
+
+      if (isAutoRotating) {
+        startAutoRotation();
+        autoRotateBtn.classList.remove('paused');
+        autoRotateBtn.innerHTML = '🔄';
+        autoRotateBtn.title = '自動回転 ON';
+      } else {
+        stopAutoRotation();
+        autoRotateBtn.classList.add('paused');
+        autoRotateBtn.innerHTML = '⏸️';
+        autoRotateBtn.title = '自動回転 OFF';
+      }
+
+      if (navigator.vibrate) {
+        navigator.vibrate(30);
+      }
+    }
+
+    /**
+     * Toggle mini-map visibility
+     */
+    function toggleMiniMap() {
+      const miniMap = document.getElementById('miniMap');
+      const toggleBtn = miniMap.querySelector('.mini-map-toggle');
+      miniMap.classList.toggle('collapsed');
+      toggleBtn.textContent = miniMap.classList.contains('collapsed') ? '+' : '−';
+    }
+
+    /**
+     * Switch between Tourism and Disaster modes
+     * @param {string} mode - 'tourism' or 'disaster'
+     */
+    function switchMode(mode) {
+      if (mode === currentMode) return;
+
+      currentMode = mode;
+
+      if (mode === 'tourism') {
+        tourismLabels.setAttribute('visible', 'true');
+        disasterLabels.setAttribute('visible', 'false');
+        disasterOverlay.classList.remove('active');
+        warningBanner.classList.remove('active');
+        btnTourism.classList.add('active');
+        btnDisaster.classList.remove('active');
+      } else if (mode === 'disaster') {
+        tourismLabels.setAttribute('visible', 'false');
+        disasterLabels.setAttribute('visible', 'true');
+        disasterOverlay.classList.add('active');
+        warningBanner.classList.add('active');
+        btnTourism.classList.remove('active');
+        btnDisaster.classList.add('active');
+      }
+
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    }
+
+    // ========================================
+    // Initialization & Event Listeners
+    // ========================================
+    document.addEventListener('DOMContentLoaded', () => {
+      const scene = document.querySelector('a-scene');
+      const startButton = document.getElementById('startButton');
+      const loadingSpinner = document.getElementById('loadingSpinner');
+      const loadingText = document.getElementById('loadingText');
+      const loadingScreen = document.getElementById('loadingScreen');
+
+      // Initialize scene navigation
+      initSceneNav();
+
+      // Check when A-Frame is ready
+      if (scene.hasLoaded) {
+        onSceneLoaded();
+      } else {
+        scene.addEventListener('loaded', onSceneLoaded);
+      }
+
+      // Assets Loading Fallback (if 'loaded' event doesn't fire fast enough for assets)
+      // Note: A-Frame's 'loaded' fires when the scene graph is ready, not necessarily all assets.
+      // Ideally we would use an asset loader, but for this prototype we'll assume it's "Ready" 
+      // when the scene is initialized.
+
+      // Fallback timer to show Start button anyway after 4 seconds (prevent stuck loading)
+      setTimeout(onSceneLoaded, 4000);
+
+      function onSceneLoaded() {
+        // Prevent double execution
+        if (startButton.classList.contains('visible')) return;
+
+        // Hide spinner, show Start button
+        loadingSpinner.style.display = 'none';
+        loadingText.textContent = "準備完了";
+        startButton.classList.add('visible');
+      }
+
+      // Start Button Click Handler
+      startButton.addEventListener('click', (e) => {
+        // Prevent click from passing through to A-Frame scene
+        e.stopPropagation();
+        e.preventDefault();
+
+        // 1. Request iOS Gyro Permission
+        requestDeviceOrientation();
+
+        // 2. Hide Loading Screen
+        loadingScreen.classList.add('hide');
+        setTimeout(() => {
+          loadingScreen.style.display = 'none';
+        }, 500);
+
+        // 3. Initialize Scene Content
+        init();
+      });
+
+      function init() {
+        const initialScene = scenes.find(s => s.id === currentSceneId);
+        if (initialScene) {
+          createHotspots(initialScene.hotspots);
+        }
+        // Start Y-axis only auto-rotation
+        if (isAutoRotating) {
+          startAutoRotation();
+        }
+      }
+    });
+
+    /**
+     * Request Device Orientation Permission (iOS 13+)
+     */
+    function requestDeviceOrientation() {
+      if (
+        typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function'
+      ) {
+        DeviceOrientationEvent.requestPermission()
+          .then(response => {
+            if (response === 'granted') {
+              console.log('DeviceOrientation permission granted');
+            } else {
+              console.warn('DeviceOrientation permission denied');
+              alert('ジャイロセンサーの許可が得られませんでした。画面スワイプで操作してください。');
+            }
+          })
+          .catch(error => {
+            console.error('DeviceOrientation request error:', error);
+          });
+      }
+    }
+
+    // ========================================
+    // Keyboard Shortcuts (for development)
+    // ========================================
+    document.addEventListener('keydown', (e) => {
+      if (e.key === '1') switchMode('tourism');
+      if (e.key === '2') switchMode('disaster');
+      // Scene shortcuts
+      if (e.key === 'q') loadScene('scene1');
+      if (e.key === 'w') loadScene('scene2');
+      if (e.key === 'e') loadScene('scene3');
+    });
+
+    // ========================================
+    // Console Welcome Message
+    // ========================================
+    console.log('%c🌄 OITA SKY RESILI-VIEW', 'color: #FFD700; font-size: 20px; font-weight: bold;');
+    console.log('%c絶景で癒やし、空の目で命を守る。', 'color: #4CAF50; font-size: 14px;');
+    console.log('%c© 無人航空機国家ライセンスセンター 株式会社スカイ・ファイブ', 'color: #888; font-size: 12px;');
+    console.log('%cシーン切替: Q/W/E キー | モード切替: 1/2 キー', 'color: #888; font-size: 11px;');
+  </script>
+
+</body>
+
+</html>
